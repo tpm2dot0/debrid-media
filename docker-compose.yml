@@ -1,0 +1,60 @@
+services:
+  zurg:
+    image: ghcr.io/debridmediamanager/zurg-testing:latest
+    container_name: zurg
+    volumes:
+      - ./config/config.yml:/app/config.yml:ro           
+    restart: unless-stopped
+
+  rclone:
+    image: rclone/rclone:latest
+    container_name: rclone-zurg
+    depends_on:
+      zurg:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./config/rclone.conf:/config/rclone/rclone.conf:ro
+      - ${BASE}/rclone/cache:/mnt/cache
+      - ${BASE}/mnt:/data:shared
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    user: "0:0"
+    command: "mount zurg: /data --allow-non-empty --allow-other --uid=0 --gid=0 --cache-dir=/mnt/cache --vfs-cache-mode full --vfs-cache-max-age 12h --vfs-cache-max-size ${RCLONE_CACHE_LIMIT} --async-read --vfs-read-ahead 128M --vfs-read-chunk-size 64M --vfs-read-chunk-size-limit 1G --use-mmap --buffer-size 128M --dir-cache-time 10s --config /config/rclone/rclone.conf"
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q ' /data ' /proc/mounts || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    depends_on:
+      rclone:
+        condition: service_healthy
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
+      VERSION: docker
+      PLEX_CLAIM: ${PLEX_CLAIM}
+    # Enable hardware acceleration if needed
+    # devices:
+    #   - /dev/dri:/dev/dri
+    volumes:
+      - ${BASE}/plex/config:/config
+      - ${BASE}/plex/transcode:/transcode
+      - ${BASE}/mnt:/data:rshared
+    restart: unless-stopped
