@@ -18,7 +18,6 @@ services:
       TZ: ${TZ}
     volumes:
       - ./config/rclone.conf:/config/rclone/rclone.conf:ro
-      - ${BASE}/rclone/cache:/mnt/cache
       - ${BASE}/mnt:/data:shared
     devices:
       - /dev/fuse:/dev/fuse
