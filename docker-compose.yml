@@ -3,7 +3,7 @@ services:
     image: ghcr.io/debridmediamanager/zurg-testing:latest
     container_name: zurg
     volumes:
-      - ./config/config.yml:/app/config.yml:ro           
+      - ./config/config.yml:/app/config.yml:ro
     restart: unless-stopped
 
   rclone:
